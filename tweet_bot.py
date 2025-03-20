@@ -1,14 +1,13 @@
 import os
 import requests
 import datetime
-import random
 import tweepy
 
 # Get today's date
 today = datetime.datetime.now().strftime("%B %d")
 
-# Fetch historical events and birthdays (example API, replace with actual source)
-EVENTS_API = f"https://history.muffinlabs.com/date"
+# Fetch historical events and birthdays
+EVENTS_API = "https://history.muffinlabs.com/date"
 response = requests.get(EVENTS_API).json()
 
 # Extract top 3 historical events
@@ -25,17 +24,19 @@ tweet_content += "🎉 Birthdays:\n" + "\n".join(birthdays_text) + "\n\n"
 tweet_content += "📖 Events:\n" + "\n".join(events_text) + "\n\n"
 tweet_content += f"⏳ {datetime.datetime.now().strftime('%H:%M:%S')} IST"  # Add timestamp
 
-# Authenticate with Twitter API
-client = tweepy.Client(
-    consumer_key=os.getenv("TWITTER_API_KEY"),
-    consumer_secret=os.getenv("TWITTER_API_SECRET"),
-    access_token=os.getenv("TWITTER_ACCESS_TOKEN"),
-    access_token_secret=os.getenv("TWITTER_ACCESS_SECRET")
+# Authenticate with Twitter API (OAuth 1.0a)
+auth = tweepy.OAuth1UserHandler(
+    os.getenv("TWITTER_API_KEY"),
+    os.getenv("TWITTER_API_SECRET"),
+    os.getenv("TWITTER_ACCESS_TOKEN"),
+    os.getenv("TWITTER_ACCESS_SECRET"),
 )
+
+api = tweepy.API(auth)
 
 # Post the tweet
 try:
-    client.create_tweet(text=tweet_content[:260])  # Ensure within 260 chars
+    api.update_status(tweet_content[:260])  # Ensure within 260 chars
     print("Tweet posted successfully!")
 except Exception as e:
     print("Error:", e)
