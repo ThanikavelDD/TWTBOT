@@ -11,15 +11,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4  # ✅ Updated to latest version
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v4  # ✅ Updated to latest version
         with:
           python-version: "3.9"
 
       - name: Install dependencies
-        run: pip install requests tweepy
+        run: pip install requests tweepy wikipedia-api  # ✅ Includes 'requests' package
 
       - name: Run the Twitter bot
         env:
