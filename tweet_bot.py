@@ -33,23 +33,63 @@ def get_this_day_history():
     page = wiki.page(page_title)
 
     if not page.exists():
-        print("❌ Wikipedia page not found:", page_title)
         return [], []
 
-    events_section = page.section("Events")
-    births_section = page.section("Births")
+    lines = page.text.split("\n")
 
-    events = events_section.split("\n") if events_section else []
-    births = births_section.split("\n") if births_section else []
+    events = []
+    births = []
+    section = None
 
-    # Filter out empty lines and limit to top 3
-    events = [event.strip() for event in events if event.strip()][:3]
-    births = [birth.strip() for birth in births if birth.strip()][:3]
+    for line in lines:
+        line = line.strip()
+        if line.startswith("== Events =="):
+            section = "events"
+            continue
+        elif line.startswith("== Births =="):
+            section = "births"
+            continue
+        elif line.startswith("=="):
+            section = None
+            continue
+        
+        if section == "events" and len(events) < 3:
+            events.append(line)
+        elif section == "births" and len(births) < 3:
+            births.append(line)
 
-    print("📌 Extracted Events:", events)
-    print("🎉 Extracted Birthdays:", births)
+    print(f"📌 Extracted Events: {events}")
+    print(f"🎉 Extracted Birthdays: {births}")
 
     return events, births
 
 # Format tweet text
-d
+def format_tweet():
+    events, births = get_this_day_history()
+    today = datetime.datetime.now().strftime("%d %B %Y")
+
+    tweet_text = f"📅 This Day That Year: {today}\n\n"
+
+    if events:
+        tweet_text += "🎯 Events:\n"
+        for event in events:
+            tweet_text += f"• {event}\n"
+
+    if births:
+        tweet_text += "\n🎉 Famous Birthdays:\n"
+        for birth in births:
+            tweet_text += f"• {birth}\n"
+
+    tweet_text += f"\n⏳ {datetime.datetime.now().strftime('%H:%M:%S')} IST"
+
+    return tweet_text[:260]  # Ensure tweet is below 260 characters
+
+# Post tweet
+def post_tweet():
+    tweet_text = format_tweet()
+    response = client.create_tweet(text=tweet_text)
+    print(f"✅ Tweet posted: {response}")
+
+# Run the bot
+if __name__ == "__main__":
+    post_tweet()
