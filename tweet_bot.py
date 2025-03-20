@@ -1,5 +1,6 @@
 import tweepy
-import wikipediaapi
+import requests
+from bs4 import BeautifulSoup
 import datetime
 import os
 
@@ -17,46 +18,27 @@ client = tweepy.Client(
     access_token_secret=ACCESS_SECRET
 )
 
-# Function to get historical events and birthdays from Wikipedia
+# Function to scrape events & birthdays
 def get_this_day_history():
     today = datetime.datetime.now()
-    month = today.strftime("%B")
+    month = today.strftime("%B").lower()
     day = today.day
 
-    # Wikipedia API with User-Agent fix ✅
-    wiki = wikipediaapi.Wikipedia(
-        language="en",
-        user_agent="YourTwitterBot/1.0 (https://github.com/yourusername/TWTBOT/; contact: youremail@example.com)"
-    )
-
-    page_title = f"{month}_{day}"
-    page = wiki.page(page_title)
-
-    if not page.exists():
+    url = f"https://www.onthisday.com/day/{month}/{day}"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        print("❌ Failed to fetch data")
         return [], []
+    
+    soup = BeautifulSoup(response.text, "html.parser")
 
-    lines = page.text.split("\n")
-
-    events = []
-    births = []
-    section = None
-
-    for line in lines:
-        line = line.strip()
-        if line.startswith("== Events =="):
-            section = "events"
-            continue
-        elif line.startswith("== Births =="):
-            section = "births"
-            continue
-        elif line.startswith("=="):
-            section = None
-            continue
-        
-        if section == "events" and len(events) < 3:
-            events.append(line)
-        elif section == "births" and len(births) < 3:
-            births.append(line)
+    # Extract historical events
+    events = [event.text for event in soup.select(".event")][:3]
+    
+    # Extract famous birthdays
+    births = [birth.text for birth in soup.select(".birth")][:3]
 
     print(f"📌 Extracted Events: {events}")
     print(f"🎉 Extracted Birthdays: {births}")
@@ -88,7 +70,7 @@ def format_tweet():
 def post_tweet():
     tweet_text = format_tweet()
     response = client.create_tweet(text=tweet_text)
-    print(f"✅ Tweet posted: {response}")
+    print("✅ Tweet posted:", response)
 
 # Run the bot
 if __name__ == "__main__":
