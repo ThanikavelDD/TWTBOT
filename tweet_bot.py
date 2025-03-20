@@ -1,77 +1,92 @@
-import os
 import tweepy
 import wikipediaapi
-from datetime import datetime
+import datetime
+import os
 
-# ✅ Authenticate using Twitter API v2 (OAuth 1.0a)
+# Twitter API credentials (from GitHub Secrets)
+API_KEY = os.getenv("TWITTER_API_KEY")
+API_SECRET = os.getenv("TWITTER_API_SECRET")
+ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
+ACCESS_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
+
+# Authenticate with Twitter API
 client = tweepy.Client(
-    consumer_key=os.getenv("TWITTER_API_KEY"),
-    consumer_secret=os.getenv("TWITTER_API_SECRET"),
-    access_token=os.getenv("TWITTER_ACCESS_TOKEN"),
-    access_token_secret=os.getenv("TWITTER_ACCESS_SECRET"),
+    consumer_key=API_KEY,
+    consumer_secret=API_SECRET,
+    access_token=ACCESS_TOKEN,
+    access_token_secret=ACCESS_SECRET
 )
 
-# ✅ Function to fetch historical events & famous birthdays
+# Function to get historical events and birthdays from Wikipedia
 def get_this_day_history():
-    today = datetime.now().strftime("%B %d")  # e.g., "March 20"
-    wiki = wikipediaapi.Wikipedia("en")
+    today = datetime.datetime.now()
+    month = today.strftime("%B")
+    day = today.day
 
-    # Fetch Wikipedia page for "March 20"
-    page = wiki.page(f"{today}")
+    # Wikipedia API with User-Agent fix ✅
+    wiki = wikipediaapi.Wikipedia(
+        language="en",
+        user_agent="YourTwitterBot/1.0 (https://github.com/yourusername/TWTBOT/; contact: youremail@example.com)"
+    )
+
+    page_title = f"{month}_{day}"
+    page = wiki.page(f"{month}_{day}")
 
     if not page.exists():
-        return [], []  # Return empty lists if no data is found
+        return [], []
 
-    events, births = [], []
-    found_births = False  # Track when "Births" section starts
+    lines = page.text.split("\n")
+    
+    events = []
+    births = []
+    section = None
 
-    # Extract events and births
-    for line in page.text.split("\n"):
-        if "–" in line:  # Check for event format
-            if found_births:
-                births.append(line)
-            else:
-                events.append(line)
-        if "Births" in line:
-            found_births = True  # Start collecting birthdays
+    for line in lines:
+        line = line.strip()
+        if line.startswith("== Events =="):
+            section = "events"
+            continue
+        elif line.startswith("== Births =="):
+            section = "births"
+            continue
+        elif line.startswith("=="):
+            section = None
+            continue
+        
+        if section == "events" and len(events) < 3:
+            events.append(line)
+        elif section == "births" and len(births) < 3:
+            births.append(line)
 
-    # Select top 3 events & top 3 birthdays
-    top_events = events[:3] if len(events) > 3 else events
-    top_births = births[:3] if len(births) > 3 else births
+    return events, births
 
-    return top_events, top_births
-
-# ✅ Function to format the tweet (max 260 characters)
+# Format tweet text
 def format_tweet():
     events, births = get_this_day_history()
-    
-    if not events or not births:
-        return "📜 This Day That Year 🕰️ - No historical events found for today."
+    today = datetime.datetime.now().strftime("%d %B %Y")
 
-    # Add a timestamp to avoid duplicate tweet errors
-    timestamp = datetime.now().strftime("%H:%M")
+    tweet_text = f"📅 This Day That Year: {today}\n\n"
 
-    tweet = f"📜 This Day That Year 🕰️ ({timestamp} IST)\n\n"
+    if events:
+        tweet_text += "🎯 Events:\n"
+        for event in events:
+            tweet_text += f"• {event}\n"
 
-    tweet += "🎂 Famous Birthdays:\n"
-    for birth in births:
-        tweet += f"• {birth}\n"
+    if births:
+        tweet_text += "\n🎉 Famous Birthdays:\n"
+        for birth in births:
+            tweet_text += f"• {birth}\n"
 
-    tweet += "\n📌 Key Events:\n"
-    for event in events:
-        tweet += f"• {event}\n"
+    tweet_text += f"\n⏳ {datetime.datetime.now().strftime('%H:%M:%S')} IST"
 
-    return tweet[:260]  # Ensure it's under 260 characters
+    return tweet_text[:260]  # Ensure tweet is below 260 characters
 
-# ✅ Function to post the tweet
+# Post tweet
 def post_tweet():
     tweet_text = format_tweet()
-    
-    try:
-        response = client.create_tweet(text=tweet_text)
-        print(f"✅ Tweet posted successfully! ID: {response.data['id']}")
-    except Exception as e:
-        print("❌ Error posting tweet:", e)
+    response = client.create_tweet(text=tweet_text)
+    print("Tweet posted:", response)
 
 # Run the bot
-post_tweet()
+if __name__ == "__main__":
+    post_tweet()
