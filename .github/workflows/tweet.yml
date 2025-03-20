@@ -19,7 +19,7 @@ jobs:
           python-version: "3.9"
 
       - name: Install dependencies
-        run: pip install requests tweepy wikipedia-api  # ✅ Includes 'requests' package
+        run: pip install requests tweepy wikipedia-api  # ✅ Ensure all needed packages
 
       - name: Run the Twitter bot
         env:
