@@ -23,16 +23,17 @@ def get_this_day_history():
     month = today.strftime("%B")
     day = today.day
 
-    # Wikipedia API with User-Agent fix ✅
+    # ✅ Wikipedia API with correct user agent
     wiki = wikipediaapi.Wikipedia(
         language="en",
         user_agent="YourTwitterBot/1.0 (https://github.com/yourusername/TWTBOT/; contact: youremail@example.com)"
     )
 
-    page_title = f"{month}_{day}"
-    page = wiki.page(f"{month}_{day}")
+    page_title = f"{month} {day}"  # ✅ Correct format
+    page = wiki.page(page_title)
 
     if not page.exists():
+        print(f"⚠️ Wikipedia page '{page_title}' not found.")
         return [], []
 
     lines = page.text.split("\n")
@@ -43,20 +44,24 @@ def get_this_day_history():
 
     for line in lines:
         line = line.strip()
-        if line.startswith("== Events =="):
+
+        if "== Events ==" in line:
             section = "events"
             continue
-        elif line.startswith("== Births =="):
+        elif "== Births ==" in line:
             section = "births"
             continue
-        elif line.startswith("=="):
+        elif "==" in line:
             section = None
             continue
-        
-        if section == "events" and len(events) < 3:
+
+        if section == "events" and len(events) < 3 and len(line) > 10:  # ✅ Ensures text is valid
             events.append(line)
-        elif section == "births" and len(births) < 3:
+        elif section == "births" and len(births) < 3 and len(line) > 10:  # ✅ Ensures valid text
             births.append(line)
+
+    print(f"📌 Extracted Events: {events}")
+    print(f"🎉 Extracted Birthdays: {births}")
 
     return events, births
 
@@ -79,13 +84,18 @@ def format_tweet():
 
     tweet_text += f"\n⏳ {datetime.datetime.now().strftime('%H:%M:%S')} IST"
 
-    return tweet_text[:260]  # Ensure tweet is below 260 characters
+    return tweet_text[:260]  # ✅ Ensures tweet is below 260 characters
 
 # Post tweet
 def post_tweet():
     tweet_text = format_tweet()
+    
+    if len(tweet_text.strip()) < 20:  # ✅ Prevents empty tweets
+        print("⚠️ No valid data found. Tweet not posted.")
+        return
+    
     response = client.create_tweet(text=tweet_text)
-    print("Tweet posted:", response)
+    print("✅ Tweet posted:", response)
 
 # Run the bot
 if __name__ == "__main__":
